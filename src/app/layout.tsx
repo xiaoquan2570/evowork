@@ -25,16 +25,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN"> {/* 设置语言为中文 */}
-      <body
+    <html lang="zh-CN" suppressHydrationWarning><body // <--- 确保 <html> 和 <body> 标签紧密相连，没有换行或空格
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
+        suppressHydrationWarning={true}
       >
         <Navbar />
         <main className="flex-grow container mx-auto px-4 py-8">
           {children}
         </main>
         <Footer />
-      </body>
-    </html>
+      </body></html> // <--- 确保 </body> 和 </html> 标签紧密相连
   );
 }
