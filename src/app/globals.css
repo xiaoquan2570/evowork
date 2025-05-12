@@ -3,24 +3,30 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* 您可以根据 EvoWork 的品牌色调整这些基础颜色 */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-geist-sans); /* 确保这些字体变量在 layout.tsx 中设置 */
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0a0a0a; /* 深色模式背景 */
+    --foreground: #ededed; /* 深色模式前景 */
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* background: var(--color-background); */ /* 使用 @theme 中定义的变量 - 已移除 */
+  /* color: var(--color-foreground); */   /* 使用 @theme 中定义的变量 - 已移除 */
+  font-family: var(--font-sans);    /* 使用 @theme 中定义的变量 */
+  @apply antialiased; /* 确保字体平滑 */
+  /* 更新基础 Tailwind 样式以匹配更简洁的风格 */
+  @apply bg-white text-neutral-800 dark:bg-slate-900 dark:text-neutral-200;
 }
+
+/* 您可以在这里添加更多全局自定义样式 */
