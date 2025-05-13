@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'; // 导入 usePathname
 
 const navLinks = [
   { href: "/", label: "产品介绍" },
-  { href: "/agents", label: "数字人Agent" },
+  { href: "/insurance-agents", label: "数字人Agent" }, // <--- 修改此处的 href
   { href: "/mcp-market", label: "MCP市场" },
   { href: "/private-deployment", label: "私有化部署" },
 ];
