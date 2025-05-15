@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState } from 'react';
+import { UseCasesSection } from "../components/UseCasesDisplay";
+import { motion } from 'framer-motion';
 
-// 角色类型定义
+// 角色类型定义 (remains here)
 const roles = ["保险代理人", "新媒体运营"] as const;
 type Role = typeof roles[number];
 
@@ -19,19 +21,19 @@ const ChatInput = ({ role }: { role: Role }) => {
   return (
     <form
       onSubmit={handleSubmit}
-      className="max-w-2xl mx-auto flex items-center bg-white dark:bg-slate-700 rounded-full p-2 shadow-xl focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 dark:focus-within:ring-offset-slate-800 transition-all"
+      className="max-w-xl mx-auto flex items-center bg-white dark:bg-slate-800 rounded-full p-1.5 shadow-lg border border-slate-200 dark:border-slate-700 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 dark:focus-within:ring-offset-slate-900 transition-all duration-300 ease-in-out"
     >
       <input
         type="text"
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
         placeholder={`向 ${role} AI 发出指令...`}
-        className="flex-grow px-4 py-2.5 bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 text-sm sm:text-base"
+        className="flex-grow px-5 py-3 bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 text-base"
       />
       <button
         type="submit"
         aria-label="发送"
-        className="ml-2 p-2.5 bg-blue-600 hover:bg-blue-700 rounded-full text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:focus:ring-offset-slate-700 transition-colors"
+        className="flex-shrink-0 ml-1 p-3 bg-blue-600 hover:bg-blue-700 rounded-full text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:focus:ring-offset-slate-800 transition-colors duration-150 ease-in-out shadow-md hover:shadow-lg"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -55,43 +57,60 @@ export default function HomePage() {
   
   return (
     <div className="space-y-12">
-      {/* Hero Section */}
-      <section className="text-center py-16 md:py-24">
-        <h1 className="text-5xl md:text-6xl font-bold mb-4 text-blue-600 dark:text-blue-400">EvoWork</h1>
-        <p className="text-xl text-slate-600 dark:text-slate-400 mb-8 max-w-2xl mx-auto">
-          AI驱动未来工作：雇佣AI数字员工，部署智能工作流，全面提升企业效率。
-        </p>
-        
-        {/* 角色切换功能 */}
-        <div className="flex justify-center mb-6 space-x-4">
-          {roles.map((r) => (
-            <button
-              key={r}
-              onClick={() => setRole(r)}
-              className={`px-5 py-2 rounded-full border transition
-                ${role === r
-                  ? "bg-blue-600 text-white border-blue-600"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50"
-                }`}
-            >
-              {r}
-            </button>
-          ))}
-        </div>
+      {/* Hero Section - Apply new styling */}
+      <section id="hero-section" className="text-center py-16 md:py-24">
+        <div className="max-w-3xl mx-auto px-4"> {/* Limiting width and centering */}
+          {/* Optional: Placeholder for a "100% OPEN SOURCE" like tag */}
+          <div className="mb-6 md:mb-8">
+            <span className="inline-flex items-center justify-center px-4 py-1.5 text-xs font-medium tracking-wide text-blue-700 bg-blue-100 rounded-full dark:bg-blue-500/20 dark:text-blue-300">
+              ✨ EvoWork 平台全新升级 ✨
+            </span>
+          </div>
 
-        {/* 使用优化后的ChatInput组件 */}
-        <ChatInput role={role} />
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 text-slate-900 dark:text-white">
+            <span className="text-blue-600 dark:text-blue-400">Evo</span>Work
+          </h1>
+          <p className="text-lg md:text-xl text-slate-600 dark:text-slate-400 mb-10 md:mb-12 max-w-xl mx-auto">
+            AI驱动未来工作：雇佣AI数字员工，部署智能工作流，全面提升企业效率。
+          </p>
+          
+          {/* Role switching is removed to match the image more closely */}
+          {/* <div className="flex justify-center mb-6 space-x-4">
+            {roles.map((r: Role) => (
+              <button
+                key={r}
+                onClick={() => setRole(r)}
+                className={`px-5 py-2 rounded-full border transition
+                  ${role === r
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50"
+                  }`}
+              >
+                {r}
+              </button>
+            ))}
+          </div> */}
 
-        {/* 视频播放区域 */}
-        <div className="max-w-2xl mx-auto mt-8 rounded-2xl overflow-hidden shadow-lg">
-          <div className="relative" style={{paddingTop: '56.25%'}}>
-            <iframe
-              src="//player.bilibili.com/player.html?isOutside=true&aid=436966391&bvid=BV1cj411K7SZ&cid=1008533430&p=1"
-              scrolling="no"
-              frameBorder="0"
-              allowFullScreen={true}
-              className="absolute top-0 left-0 w-full h-full"
-            ></iframe>
+          {/* ChatInput - Assuming ChatInput is still relevant. Styling might need to be adjusted within ChatInput component itself */}
+          <div className="mb-12 md:mb-16"> {/* Increased margin-bottom for spacing */}
+            <ChatInput role={role} /> {/* Passing role if still needed, or ChatInput needs to be self-contained */}
+          </div>
+
+          {/* Video Player Area - Styled to be more card-like */}
+          <div className="max-w-2xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-700">
+            {/* Optional: Text overlay like "* Kortix / Suna" could be added here if desired */}
+            {/* <div className="p-4 bg-slate-50 dark:bg-slate-800 text-center">
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">EvoWork 视频演示</p>
+            </div> */} 
+            <div className="relative" style={{paddingTop: '56.25%'}}> {/* 16:9 Aspect Ratio */}
+              <iframe
+                src="//player.bilibili.com/player.html?isOutside=true&aid=436966391&bvid=BV1cj411K7SZ&cid=1008533430&p=1"
+                scrolling="no"
+                frameBorder="0"
+                allowFullScreen={true}
+                className="absolute top-0 left-0 w-full h-full"
+              ></iframe>
+            </div>
           </div>
         </div>
       </section>
@@ -151,47 +170,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 私有化部署展示部分 */}
-      <section className="py-16 bg-white dark:bg-slate-900">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-semibold text-center mb-12 text-slate-800 dark:text-slate-200">
-            企业私有化部署
-          </h2>
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <div className="bg-slate-50 dark:bg-slate-800 p-6 rounded-lg">
-                <h3 className="text-xl font-semibold mb-3 text-blue-600 dark:text-blue-400">数据安全与合规</h3>
-                <p className="text-slate-600 dark:text-slate-300">
-                  数据存储在企业内部，完全符合行业监管和数据隐私要求。
-                </p>
-              </div>
-              <div className="bg-slate-50 dark:bg-slate-800 p-6 rounded-lg">
-                <h3 className="text-xl font-semibold mb-3 text-blue-600 dark:text-blue-400">高度定制化</h3>
-                <p className="text-slate-600 dark:text-slate-300">
-                  根据企业特定需求定制AI模型和工作流，深度集成现有系统。
-                </p>
-              </div>
-            </div>
-            <div className="space-y-6">
-              <div className="bg-slate-50 dark:bg-slate-800 p-6 rounded-lg">
-                <h3 className="text-xl font-semibold mb-3 text-blue-600 dark:text-blue-400">性能与稳定性</h3>
-                <p className="text-slate-600 dark:text-slate-300">
-                  独享计算资源，保障服务性能和稳定性，满足高并发需求。
-                </p>
-              </div>
-              <div className="bg-slate-50 dark:bg-slate-800 p-6 rounded-lg">
-                <h3 className="text-xl font-semibold mb-3 text-blue-600 dark:text-blue-400">自主可控</h3>
-                <p className="text-slate-600 dark:text-slate-300">
-                  企业对AI系统拥有完全的控制权，方便迭代升级和运维管理。
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* NEW Use Cases Section - Inserted here */}
+      <UseCasesSection />
 
       {/* Pricing Section */}
-      <section className="py-16 bg-white dark:bg-slate-900">
+      <section id="pricing-section" className="py-16 bg-white dark:bg-slate-900">
         <div className="container mx-auto px-4">
           <h2 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white text-center mb-3">
             选择适合您需求的套餐
