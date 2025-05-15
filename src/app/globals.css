@@ -21,12 +21,21 @@
 }
 
 body {
-  /* background: var(--color-background); */ /* 使用 @theme 中定义的变量 - 已移除 */
-  /* color: var(--color-foreground); */   /* 使用 @theme 中定义的变量 - 已移除 */
   font-family: var(--font-sans);    /* 使用 @theme 中定义的变量 */
-  @apply antialiased; /* 确保字体平滑 */
-  /* 更新基础 Tailwind 样式以匹配更简洁的风格 */
-  @apply bg-white text-neutral-800 dark:bg-slate-900 dark:text-neutral-200;
+  color: var(--foreground); /* 使用 CSS 变量设置文本颜色 */
+  -webkit-font-smoothing: antialiased; /* 标准 CSS 实现抗锯齿 */
+  -moz-osx-font-smoothing: grayscale;  /* 标准 CSS 实现抗锯齿 */
+  
+  /* 添加背景纹理样式 */
+  background-color: #f8faff; /* 页面的基础颜色，一种非常浅的蓝白色调 */
+  background-image: url("data:image/svg+xml,%3Csvg width='8' height='8' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='0' y='0' width='2' height='2' fill='rgba(200, 210, 230, 0.4)'/%3E%3C/svg%3E");
+  /*
+    SVG 详细说明:
+    - width='8' height='8': 定义了一个 8x8 像素的可重复单元格。
+    - rect x='0' y='0' width='2' height='2': 在这个单元格内绘制一个 2x2 像素的方块。
+    - fill='rgba(200, 210, 230, 0.4)': 用半透明的浅蓝灰色填充方块。
+    您可以调整这些值来改变方块的密度、大小和颜色。
+  */
 }
 
 /* 您可以在这里添加更多全局自定义样式 */
