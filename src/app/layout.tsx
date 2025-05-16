@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google"; // 保持您项目已有的字体配置
+// import { Geist, Geist_Mono } from "next/font/google"; // Old import
+import { GeistSans } from 'geist/font/sans'; // Corrected: Named import GeistSans
+import { GeistMono } from 'geist/font/mono'; // Corrected: Named import GeistMono
 import "./globals.css";
 import Navbar from "@/components/Navbar"; // 导入 Navbar
 import Footer from "@/components/Footer"; // 导入 Footer
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+// Instances are directly the imported objects as per geist documentation
+// const geistSans = GeistSans({ 
+//   variable: "--font-geist-sans",
+// });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+// const geistMono = GeistMono({ 
+//   variable: "--font-geist-mono",
+// });
 
 export const metadata: Metadata = {
   title: "EvoWork - AI驱动的工作新范式", // 更新标题
@@ -26,7 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" suppressHydrationWarning><body // <--- 确保 <html> 和 <body> 标签紧密相连，没有换行或空格
-        className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
+        className={`${GeistSans.variable} ${GeistMono.variable} antialiased flex flex-col min-h-screen`}
         suppressHydrationWarning={true}
       >
         <Navbar />

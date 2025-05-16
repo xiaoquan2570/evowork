@@ -2,11 +2,9 @@
 
 import React, { useState } from 'react';
 import { UseCasesSection } from "../components/UseCasesDisplay";
-import { motion } from 'framer-motion';
 
-// 角色类型定义 (remains here)
-const roles = ["保险代理人", "新媒体运营"] as const;
-type Role = typeof roles[number];
+// 角色类型定义
+type Role = "保险代理人" | "新媒体运营";
 
 // 优化后的ChatInput组件
 const ChatInput = ({ role }: { role: Role }) => {
@@ -53,7 +51,7 @@ const ChatInput = ({ role }: { role: Role }) => {
 };
 
 export default function HomePage() {
-  const [role, setRole] = useState<Role>("保险代理人");
+  const [role] = useState<Role>("保险代理人");
   
   return (
     <div className="space-y-12">
@@ -74,23 +72,6 @@ export default function HomePage() {
             AI驱动未来工作：雇佣AI数字员工，部署智能工作流，全面提升企业效率。
           </p>
           
-          {/* Role switching is removed to match the image more closely */}
-          {/* <div className="flex justify-center mb-6 space-x-4">
-            {roles.map((r: Role) => (
-              <button
-                key={r}
-                onClick={() => setRole(r)}
-                className={`px-5 py-2 rounded-full border transition
-                  ${role === r
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50"
-                  }`}
-              >
-                {r}
-              </button>
-            ))}
-          </div> */}
-
           {/* ChatInput - Assuming ChatInput is still relevant. Styling might need to be adjusted within ChatInput component itself */}
           <div className="mb-12 md:mb-16"> {/* Increased margin-bottom for spacing */}
             <ChatInput role={role} /> {/* Passing role if still needed, or ChatInput needs to be self-contained */}
