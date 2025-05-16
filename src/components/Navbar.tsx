@@ -140,12 +140,13 @@ const Navbar = () => {
 
         {/* Right-side Buttons Area - Adjusted for alignment */}
         <div className="hidden md:flex items-center justify-end space-x-3 min-w-[120px]">
-          <button 
-            type="button"
+          <Link 
+            href="/dashboard"
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 transition-colors"
+            onClick={() => setActiveSection('')} // Clear active section when navigating away from homepage sections
           >
             Dashboard
-          </button>
+          </Link>
           <button 
             type="button"
             aria-label="Toggle theme" 
