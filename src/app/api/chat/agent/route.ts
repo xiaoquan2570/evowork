@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import type { Message } from '@/contexts/DashboardContext'; // Assuming Message type is accessible
+// Removed: import { OpenAIStream, StreamingTextResponse } from 'ai';
+// Removed: import type { ChatCompletionCreateParams } from 'openai/resources/chat/completions';
 
 // Define the expected request body structure
 interface AgentRequestBody {
@@ -30,14 +32,17 @@ Avoid claiming to perform real-time actions you cannot execute.
 Maintain a professional and friendly tone.`;
 
 export async function POST(req: NextRequest) {
+  console.log('[API /api/chat/agent] Received request for yaoluu.com proxy at:', new Date().toISOString());
   try {
     const { messages: chatHistory } = (await req.json()) as AgentRequestBody;
+    console.log('[API /api/chat/agent] Request body:', { chatHistory });
 
     const apiKey = process.env.LLM_API_KEY;
-    const baseURL = process.env.LLM_BASE_URL;
+    const baseURL = process.env.LLM_BASE_URL; // Should be yaoluu.com
     const modelName = process.env.LLM_MODEL_NAME;
 
     if (!apiKey || !baseURL || !modelName) {
+      console.error('[API /api/chat/agent] Error: LLM service not configured. Missing API key, base URL, or model name for yaoluu.com.');
       return NextResponse.json(
         { success: false, error: 'LLM service not configured. Missing API key, base URL, or model name.' },
         { status: 500 }
@@ -49,68 +54,79 @@ export async function POST(req: NextRequest) {
       baseURL: baseURL,
     });
 
-    // Transform our Message[] to OpenAI's format { role, content }
-    // and prepend the system prompt.
+    console.log(`[API /api/chat/agent] Preparing to call LLM at ${baseURL} with model ${modelName}.`);
+
     const llmMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       { role: 'system', content: SYSTEM_PROMPT } as OpenAI.Chat.Completions.ChatCompletionSystemMessageParam,
       ...chatHistory.map((msg) => ({
         role: msg.sender === 'user' ? 'user' : 'assistant',
-        content: msg.text,
+        content: msg.text, // Assuming your message object has a 'text' property
       } as OpenAI.Chat.Completions.ChatCompletionUserMessageParam | OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam)),
     ];
+
+    console.log('[API /api/chat/agent] LLM request body:', JSON.stringify(llmMessages, null, 2));
 
     const completion = await openai.chat.completions.create({
       model: modelName,
       messages: llmMessages,
-      stream: true, // ENABLE STREAMING
+      stream: true,
     });
+    console.log('[API /api/chat/agent] Successfully received stream from LLM.');
 
-    // Create a ReadableStream to send back to the client
     const readableWebStream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
+        console.log('[API /api/chat/agent] Stream: Starting to process chunks.');
         for await (const part of completion) {
           const textChunk = part.choices[0]?.delta?.content || "";
           if (textChunk) {
+            // console.log('[API /api/chat/agent] Stream: Sending chunk:', textChunk); // Can be verbose
             controller.enqueue(encoder.encode(textChunk));
           }
-          // Check if the stream is finished (optional, part.choices[0]?.finish_reason)
           if (part.choices[0]?.finish_reason) {
-            // console.log("Stream finished with reason:", part.choices[0].finish_reason);
-            controller.close(); // Close the stream when the LLM indicates completion
+            console.log('[API /api/chat/agent] Stream: Finished with reason:', part.choices[0].finish_reason);
+            controller.close();
             return;
           }
         }
-        // Fallback close if the loop finishes without a finish_reason (should ideally not happen with well-behaved LLMs)
+        console.log('[API /api/chat/agent] Stream: Loop finished, closing controller.');
         controller.close(); 
       },
       cancel() {
-        // This is called if the client aborts the request (e.g., closes the tab)
-        // console.log("Stream cancelled by client.");
-        // You might want to add logic here to signal the OpenAI stream to cancel if possible,
-        // though OpenAI.Chat.Completions.ChatCompletionดูแลเรื่องนี้ภายในตัวมันเองเมื่อ for-await loop ถูกยกเลิก
+        console.log("[API /api/chat/agent] Stream: Cancelled by client.");
       }
     });
 
     return new Response(readableWebStream, {
       headers: { 
         'Content-Type': 'text/plain; charset=utf-8',
-        'X-Content-Type-Options': 'nosniff', // Mitigate MIME type sniffing security risks
-        'Cache-Control': 'no-cache', // Ensure no caching of the stream
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'no-cache',
        },
     });
 
   } catch (error: any) {
-    console.error('[API/CHAT/AGENT] Error:', error);
+    console.error('[API /api/chat/agent] Error in POST handler:', error);
     let errorMessage = 'An unexpected error occurred.';
-    if (error.response) {
+    let errorStatus = 500;
+
+    if (error.response) { // Error from OpenAI-like API (e.g. yaoluu.com returning an error object)
+      console.error('[API /api/chat/agent] LLM API Error Response Status:', error.response.status);
+      console.error('[API /api/chat/agent] LLM API Error Response Data:', error.response.data);
       errorMessage = `LLM API Error: ${error.response.status} ${JSON.stringify(error.response.data)}`;
+      errorStatus = error.response.status || 500;
+    } else if (error.status) { // Error from OpenAI SDK (if it throws a status-like error)
+        console.error('[API /api/chat/agent] SDK Error Status:', error.status);
+        console.error('[API /api/chat/agent] SDK Error Message:', error.message);
+        errorMessage = error.message;
+        errorStatus = error.status;
     } else if (error.message) {
       errorMessage = error.message;
     }
+    
     return NextResponse.json(
       { success: false, error: errorMessage },
-      { status: 500 }
+      { status: errorStatus }
     );
   }
 } 

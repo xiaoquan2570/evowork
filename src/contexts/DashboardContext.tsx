@@ -1,13 +1,13 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo, useEffect } from 'react';
 // import type { Thread } from '@/app/dashboard/page'; // No longer importing from page.tsx
 
 // Define Thread interface here or in a dedicated types file
 export interface Thread {
   id: string;
   title: string;
-  lastUpdated: Date;
+  lastUpdated: Date | string;
 }
 
 export interface Message {
@@ -20,6 +20,9 @@ export interface Message {
   replyContent?: string | null; // Content after </think> tag (the final answer)
   isThinking?: boolean;         // True if <think> is open and </think> is not yet received
   thinkDuration?: number;     // Optional: store duration of think process in ms
+  thread_id?: string; // Optional, as it's contextually known but might be in DB object
+  user_id?: string;   // Optional
+  created_at?: Date | string; // Optional
 }
 
 export interface ActivityEntry {
@@ -52,9 +55,9 @@ interface DashboardContextType {
   activeThreadId: string | null;
   setActiveThreadId: React.Dispatch<React.SetStateAction<string | null>>;
   handleSelectThread: (threadId: string) => void;
-  handleNewChat: () => string;
+  handleNewChat: () => Promise<string | null>;
   messagesByThreadId: Record<string, Message[]>;
-  addMessageToThread: (threadId: string, message: Partial<Message>, isNewAgentMessage?: boolean) => string;
+  addMessageToThread: (threadId: string, message: Partial<Message>, isNewAgentMessage?: boolean) => Promise<string | null>;
   activityLog: ActivityEntry[];
   addActivity: (activity: Omit<ActivityEntry, 'id' | 'timestamp'>) => string;
   updateActivity: (activityId: string, updates: Partial<Omit<ActivityEntry, 'id' | 'timestamp'>>) => void;
@@ -64,125 +67,222 @@ interface DashboardContextType {
   setMessagesByThreadId: React.Dispatch<React.SetStateAction<Record<string, Message[]>>>;
   appendChunkToAgentMessage: (threadId: string, messageId: string, chunk: string) => void;
   finalizeAgentMessageStreaming: (threadId: string, messageId: string) => void;
+  isLoadingThreads: boolean;
+  isLoadingMessages: Record<string, boolean>;
+  error: string | null;
+  clearError: () => void;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
 
 export const DashboardProvider = ({ children }: { children: ReactNode }) => {
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
-  const [threads, setThreads] = useState<Thread[]>([
-    { id: '1', title: '阿里财报分析', lastUpdated: new Date() },
-    { id: '2', title: '你好聊天', lastUpdated: new Date(Date.now() - 1000 * 60 * 5) },
-    { id: '3', title: 'Weather Dashboard Project Idea', lastUpdated: new Date(Date.now() - 1000 * 60 * 60 * 2) },
-  ]);
+  const [threads, setThreads] = useState<Thread[]>([]);
   const [messagesByThreadId, setMessagesByThreadId] = useState<Record<string, Message[]>>({});
   const [activityLog, setActivityLog] = useState<ActivityEntry[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isLoadingThreads, setIsLoadingThreads] = useState<boolean>(true);
+  const [isLoadingMessages, setIsLoadingMessages] = useState<Record<string, boolean>>({});
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSelectThread = useCallback((threadId: string) => {
-    setActiveThreadId(threadId);
-  }, []);
+  const clearError = useCallback(() => setError(null), []);
 
-  const handleNewChat = useCallback(() => {
-    const newThreadId = `thread-${Date.now()}`;
-    const newThread: Thread = {
-      id: newThreadId,
-      title: 'New Chat',
-      lastUpdated: new Date(),
+  useEffect(() => {
+    const fetchThreads = async () => {
+      setIsLoadingThreads(true);
+      setError(null);
+      try {
+        const response = await fetch('/api/threads');
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({ message: 'Failed to fetch threads, and error response is not JSON.'}));
+          throw new Error(errData.message || `Failed to fetch threads: ${response.status}`);
+        }
+        const data: Thread[] = await response.json();
+        const processedThreads = data.map(thread => ({
+          ...thread,
+          lastUpdated: new Date(thread.lastUpdated),
+        }));
+        setThreads(processedThreads);
+      } catch (e: any) {
+        console.error("Error fetching threads:", e);
+        setError(e.message || 'An unknown error occurred while fetching threads.');
+      } finally {
+        setIsLoadingThreads(false);
+      }
     };
-    setThreads(prev => [newThread, ...prev]);
-    setMessagesByThreadId(prev => ({ ...prev, [newThreadId]: [] }));
-    setActiveThreadId(newThreadId);
-    clearActivityLog();
-    return newThreadId;
+    fetchThreads();
   }, []);
 
-  const addMessageToThread = useCallback((threadId: string, messageData: Partial<Message>, isNewAgentMessage: boolean = false): string => {
-    const messageId = messageData.id || `msg-${messageData.sender || 'system'}-${Date.now()}`;
+  const handleSelectThread = useCallback(async (threadId: string) => {
+    setActiveThreadId(threadId);
+    setError(null);
+
+    if (!messagesByThreadId[threadId] && !isLoadingMessages[threadId]) {
+      setIsLoadingMessages(prev => ({ ...prev, [threadId]: true }));
+      try {
+        const response = await fetch(`/api/messages?threadId=${threadId}`);
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({ message: 'Failed to fetch messages, and error response is not JSON.'}));
+          throw new Error(errData.message || `Failed to fetch messages for thread ${threadId}: ${response.status}`);
+        }
+        const data: Message[] = await response.json();
+        const processedMessages = data.map(msg => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp),
+        }));
+        setMessagesByThreadId(prev => ({ ...prev, [threadId]: processedMessages }));
+      } catch (e: any) {
+        console.error(`Error fetching messages for thread ${threadId}:`, e);
+        setError(e.message || `Failed to load messages for thread ${threadId}.`);
+      } finally {
+        setIsLoadingMessages(prev => ({ ...prev, [threadId]: false }));
+      }
+    }
+  }, [messagesByThreadId, isLoadingMessages]);
+
+  const handleNewChat = useCallback(async (): Promise<string | null> => {
+    setError(null);
+    try {
+      const response = await fetch('/api/threads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title: 'New Chat' }),
+      });
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ message: 'Failed to create new chat, and error response is not JSON.'}));
+        throw new Error(errData.message || `Failed to create new chat: ${response.status}`);
+      }
+      const newThread: Thread = await response.json();
+      const processedNewThread = {
+        ...newThread,
+        lastUpdated: new Date(newThread.lastUpdated),
+      };
+
+      setThreads(prev => [processedNewThread, ...prev]);
+      setMessagesByThreadId(prev => ({ ...prev, [processedNewThread.id]: [] }));
+      setActiveThreadId(processedNewThread.id);
+      clearActivityLog();
+      return processedNewThread.id;
+    } catch (e: any) {
+      console.error("Error creating new chat:", e);
+      setError(e.message || 'An unknown error occurred while creating a new chat.');
+      return null;
+    }
+  }, []);
+
+  const addMessageToThread = useCallback(async (threadId: string, messageData: Partial<Message>, isNewAgentMessage: boolean = false): Promise<string | null> => {
+    const localMessageId = messageData.id || `msg-${messageData.sender || 'system'}-${Date.now()}`;
+    
+    const messageForFrontend: Message = {
+      id: localMessageId,
+      text: messageData.text || '',
+      sender: messageData.sender || 'agent',
+      timestamp: typeof messageData.timestamp === 'string' ? new Date(messageData.timestamp) : (messageData.timestamp || new Date()),
+      isStreaming: isNewAgentMessage,
+      isThinking: isNewAgentMessage,
+      thinkContent: '',
+      replyContent: '',
+      ...messageData,
+    };
+
     setMessagesByThreadId(prev => {
       const existingMessages = prev[threadId] || [];
-      const correctedTimestamp = typeof messageData.timestamp === 'string' ? new Date(messageData.timestamp) : (messageData.timestamp || new Date());
-      
-      let newMessage: Message = {
-        id: messageId,
-        text: messageData.text || '',
-        sender: messageData.sender || 'agent',
-        timestamp: correctedTimestamp,
-        isStreaming: isNewAgentMessage, // Set streaming based on this flag
-        isThinking: isNewAgentMessage,  // Assume thinking if it's a new agent message that will stream
-        thinkContent: '', // Initialize empty
-        replyContent: '', // Initialize empty
-        ...messageData, // Spread any other provided message data
-      };
-      
-      setThreads(prevThreads => prevThreads.map(t => 
-        t.id === threadId ? { ...t, lastUpdated: new Date() } : t
-      ));
-
       return {
         ...prev,
-        [threadId]: [...existingMessages, newMessage],
+        [threadId]: [...existingMessages, messageForFrontend],
       };
     });
-    return messageId;
-  }, []);
+
+    if (messageForFrontend.sender === 'user') {
+      try {
+        const response = await fetch('/api/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            thread_id: threadId,
+            ...messageForFrontend,
+            timestamp: (messageForFrontend.timestamp as Date).toISOString(),
+          }),
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({ message: 'Failed to save user message, server response not JSON.'}));
+          throw new Error(errData.message || `Server error saving user message: ${response.status}`);
+        }
+        const savedMessage: Message = await response.json();
+        
+        setMessagesByThreadId(prev => {
+          const currentThreadMessages = prev[threadId] || [];
+          return {
+            ...prev,
+            [threadId]: currentThreadMessages.map(msg => 
+              msg.id === localMessageId ? { ...msg, ...savedMessage, timestamp: new Date(savedMessage.timestamp) } : msg
+            ),
+          };
+        });
+        setThreads(prevThreads => prevThreads.map(t => 
+          t.id === threadId ? { ...t, lastUpdated: new Date(savedMessage.timestamp) } : t
+        ).sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()));
+
+        return savedMessage.id;
+      } catch (e: any) {
+        console.error("Error saving user message:", e);
+        setError(e.message || "Failed to save your message.");
+        return null;
+      }
+    }
+    
+    return localMessageId; 
+  }, [setError]);
 
   const appendChunkToAgentMessage = useCallback((threadId: string, messageId: string, chunk: string) => {
     setMessagesByThreadId(prev => {
       const threadMessages = prev[threadId] || [];
-      let thinkStartTime: number | null = null; 
+      let thinkStartTimestamp: number | null = null;
 
       const updatedMessages = threadMessages.map(msg => {
         if (msg.id === messageId) {
-          let newText = msg.text + chunk;
-          let newThinkContent = msg.thinkContent || '';
-          let newReplyContent = msg.replyContent || '';
-          let stillIsThinking = msg.isThinking;
+          let newText = (msg.text || '') + chunk;
+          let currentThinkContent = msg.thinkContent || '';
+          let currentReplyContent = msg.replyContent || '';
+          let currentIsThinking = msg.isThinking;
           let newThinkDuration = msg.thinkDuration;
 
-          // Simplified parsing for <think>...</think>
-          // This logic assumes <think> and </think> don't get split across chunks in a way that breaks this.
-          // A more robust parser might be needed for complex cases.
+          if (currentIsThinking === undefined && newText.includes('<think>')) {
+            currentIsThinking = true;
+            thinkStartTimestamp = msg.timestamp instanceof Date ? msg.timestamp.getTime() : Date.now();
+          }
 
-          if (stillIsThinking) {
-            if (!thinkStartTime && msg.text.includes('<think>')) { // Crude way to mark start time approx
-                thinkStartTime = msg.timestamp instanceof Date ? msg.timestamp.getTime() : Date.now();
-            }
-            if (chunk.includes('</think>')) {
-              // </think> found, finalize thinking phase for this chunk
-              const parts = (newThinkContent + chunk).split('</think>');
-              newThinkContent = parts[0].replace('<think>', ''); // Remove <think> if it was part of the first chunk
-              newReplyContent = parts[1] || '';
-              stillIsThinking = false;
-              if (thinkStartTime) {
-                newThinkDuration = Date.now() - thinkStartTime;
+          if (currentIsThinking) {
+            currentThinkContent += chunk;
+            if (currentThinkContent.includes('</think>')) {
+              const parts = currentThinkContent.split('</think>');
+              currentThinkContent = parts[0].replace('<think>', '').trim(); 
+              currentReplyContent = (parts[1] || '') + (currentReplyContent || ''); 
+              currentIsThinking = false; 
+              if (thinkStartTimestamp && !newThinkDuration) {
+                newThinkDuration = Date.now() - thinkStartTimestamp;
               }
-            } else {
-              // Still in thinking phase, append to thinkContent
-              newThinkContent += chunk.replace('<think>', ''); // Proactively remove <think> if present
             }
           } else {
-            // Not in thinking phase (either before <think> or after </think>), append to replyContent
-            newReplyContent += chunk;
+            // Always append to reply content if not actively in a <think> block that hasn't closed
+            currentReplyContent += chunk;
           }
           
-          // If <think> tag appears for the first time in this chunk (and we weren't already thinking)
-          if (!msg.isThinking && newText.includes('<think>') && !newText.includes('</think>')){
-            const thinkStartIndex = newText.indexOf('<think>');
-            // Content before <think> is part of reply (or preamble)
-            newReplyContent = newText.substring(0, thinkStartIndex);
-            newThinkContent = newText.substring(thinkStartIndex + '<think>'.length);
-            stillIsThinking = true;
-            thinkStartTime = Date.now(); 
+          if (!currentIsThinking && currentThinkContent.startsWith('<think>')) {
+              // Clean up <think> tag if it was at the very start and we are now out of thinking mode
+              currentThinkContent = currentThinkContent.substring('<think>'.length);
           }
 
           return {
             ...msg,
-            text: newText, // Keep raw text for now, might remove later if not needed
-            thinkContent: newThinkContent.trimStart(),
-            replyContent: newReplyContent.trimStart(),
-            isStreaming: true,
-            isThinking: stillIsThinking,
+            text: newText, 
+            thinkContent: currentThinkContent,
+            replyContent: currentReplyContent, // Main change: ensure this gets updated directly
+            isStreaming: true, 
+            isThinking: currentIsThinking, 
             thinkDuration: newThinkDuration,
           };
         }
@@ -192,56 +292,118 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
       if (updatedMessages.some(msg => msg.id === messageId && msg.isStreaming)) {
         setThreads(prevThreads => prevThreads.map(t => 
           t.id === threadId ? { ...t, lastUpdated: new Date() } : t
-        ));
+        ).sort((a,b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())); 
       }
       return { ...prev, [threadId]: updatedMessages };
     });
-  }, []);
+  }, [setThreads]);
 
-  const finalizeAgentMessageStreaming = useCallback((threadId: string, messageId: string) => {
+  const finalizeAgentMessageStreaming = useCallback(async (threadId: string, messageId: string) => {
+    let locallyFinalizedMessage: Message | undefined;
+
     setMessagesByThreadId(prev => {
       const threadMessages = prev[threadId] || [];
       const updatedMessages = threadMessages.map(msg => {
         if (msg.id === messageId) {
-          let finalThinkContent = msg.thinkContent || '';
-          let finalReplyContent = msg.replyContent || '';
-          let thinkDuration = msg.thinkDuration;
+          let finalThinkContent = (msg.thinkContent || '').replace('<think>', '').replace('</think>', '').trim();
+          let finalReplyContent = (msg.replyContent || '').trim();
+          let finalThinkDuration = msg.thinkDuration;
 
-          // If streaming finished while still in thinking mode (e.g. </think> was the last chunk)
-          // or if </think> was never received but streaming ended.
-          if (msg.isThinking) {
-            // Consider everything received as think content if </think> was missing.
-            // Or, if </think> was in the last chunk, parsing in appendChunk should handle it.
-            // This is a fallback.
-            finalThinkContent = finalThinkContent.replace('<think>','').trim();
-             if (!thinkDuration && msg.timestamp instanceof Date) { // Estimate duration if not set
-                thinkDuration = Date.now() - msg.timestamp.getTime();
-            }
-          } else {
-             // If we were not thinking, it means all content is reply content or </think> was processed.
-             // Ensure <think> tag is not in reply if it accidentally slipped through
-             finalReplyContent = finalReplyContent.replace('<think>','').trim();
+          if (msg.isThinking && msg.thinkContent && !msg.thinkContent.includes('</think>')) {
+             finalThinkContent = msg.thinkContent.replace('<think>', '').trim();
+             if (msg.timestamp instanceof Date && !finalThinkDuration) {
+                finalThinkDuration = Date.now() - msg.timestamp.getTime();
+             }
           }
-          // Clean up thinkContent one last time just in case of stray <think> tags
-          finalThinkContent = finalThinkContent.replace('<think>','').trim();
+          
+          if (!finalReplyContent && finalThinkContent && msg.text && msg.text.includes('</think>')){
+            const parts = msg.text.split('</think>');
+            if(parts.length > 1) finalReplyContent = parts[1].trim();
+          }
 
-          return { 
-            ...msg, 
-            isStreaming: false, 
-            isThinking: false, // Final state is not thinking
+          locallyFinalizedMessage = {
+            ...msg,
+            isStreaming: false,
+            isThinking: false, 
             thinkContent: finalThinkContent,
             replyContent: finalReplyContent,
-            thinkDuration: thinkDuration,
-          }; 
+            thinkDuration: finalThinkDuration,
+            text: finalReplyContent || finalThinkContent || 'Message processed.',
+          };
+          return locallyFinalizedMessage;
         }
         return msg;
       });
-      setThreads(prevThreads => prevThreads.map(t => 
-        t.id === threadId ? { ...t, lastUpdated: new Date() } : t
-      ));
+
+      if (locallyFinalizedMessage?.timestamp) {
+        setThreads(prevThreads => prevThreads.map(t => 
+          t.id === threadId ? { ...t, lastUpdated: new Date(locallyFinalizedMessage!.timestamp) } : t
+        ).sort((a,b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()));
+      }
       return { ...prev, [threadId]: updatedMessages };
     });
-  }, []);
+
+    // Restore DB Saving for Agent Message
+    if (locallyFinalizedMessage && locallyFinalizedMessage.sender === 'agent') {
+      try {
+        const messageToSendToDB = {
+            thread_id: threadId,
+            id: locallyFinalizedMessage.id, // Send the ID that was used for streaming updates
+            sender: locallyFinalizedMessage.sender,
+            text: locallyFinalizedMessage.replyContent || locallyFinalizedMessage.thinkContent || 'Message processed.', // Prefer replyContent for main text in DB
+            timestamp: (locallyFinalizedMessage.timestamp as Date).toISOString(),
+            think_content: locallyFinalizedMessage.thinkContent,
+            reply_content: locallyFinalizedMessage.replyContent,
+            think_duration: locallyFinalizedMessage.thinkDuration,
+        };
+        // console.log('[finalizeStream DB Save] Sending to DB:', JSON.parse(JSON.stringify(messageToSendToDB)));
+
+        const response = await fetch('/api/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(messageToSendToDB),
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({ message: 'Failed to save agent message, server response not JSON.'}));
+          throw new Error(errData.message || `Server error saving agent message: ${response.status}`);
+        }
+        const dbSavedMessage: Message = await response.json();
+        // console.log('[finalizeStream DB Save] Received from DB:', JSON.parse(JSON.stringify(dbSavedMessage)));
+        
+        setMessagesByThreadId(prev => {
+          const currentThreadMessages = prev[threadId] || [];
+          const finalMessages = currentThreadMessages.map(msg => {
+            if (msg.id === messageId) { // messageId is the original agentMessageIdToStream (locallyFinalizedMessage.id)
+              // console.log('[finalizeStream DB Save] Merging local:', JSON.parse(JSON.stringify(locallyFinalizedMessage)), 'with DB:', JSON.parse(JSON.stringify(dbSavedMessage)));
+              const mergedMessage = {
+                ...locallyFinalizedMessage!, // Start with all frontend-processed data
+                id: dbSavedMessage.id || locallyFinalizedMessage!.id, // Prefer DB id if available
+                timestamp: new Date(dbSavedMessage.timestamp),     // Prefer DB timestamp
+                created_at: dbSavedMessage.created_at,             // Add DB created_at
+                // Explicitly keep frontend parsed content unless DB has something and frontend doesn't (unlikely for these)
+                thinkContent: locallyFinalizedMessage!.thinkContent, 
+                replyContent: locallyFinalizedMessage!.replyContent,
+                text: locallyFinalizedMessage!.text, // Keep the text determined by frontend logic
+                // Other fields like user_id, thread_id if returned by DB could be merged too
+                user_id: dbSavedMessage.user_id || locallyFinalizedMessage!.user_id,
+                thread_id: dbSavedMessage.thread_id || locallyFinalizedMessage!.thread_id,
+              };
+              // console.log('[finalizeStream DB Save] Merged message:', JSON.parse(JSON.stringify(mergedMessage)));
+              return mergedMessage;
+            }
+            return msg;
+          });
+          return {
+            ...prev,
+            [threadId]: finalMessages,
+          };
+        });
+      } catch (e: any) {
+        setError(e.message || "Failed to save agent response.");
+      }
+    }
+  }, [setError, setThreads]);
 
   const addActivity = useCallback((activity: Omit<ActivityEntry, 'id' | 'timestamp'>): string => {
     const newActivityId = `act-${Date.now()}`;
@@ -294,10 +456,15 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
     setMessagesByThreadId,
     appendChunkToAgentMessage,
     finalizeAgentMessageStreaming,
+    isLoadingThreads,
+    isLoadingMessages,
+    error,
+    clearError,
   }), [
     threads, activeThreadId, messagesByThreadId, activityLog, isSidebarOpen,
     addMessageToThread, addActivity, updateActivity, clearActivityLog, toggleSidebar,
-    setThreads, setActiveThreadId, setMessagesByThreadId, appendChunkToAgentMessage, finalizeAgentMessageStreaming
+    setThreads, setActiveThreadId, setMessagesByThreadId, appendChunkToAgentMessage, finalizeAgentMessageStreaming,
+    isLoadingThreads, isLoadingMessages, error, clearError
   ]);
 
   return (

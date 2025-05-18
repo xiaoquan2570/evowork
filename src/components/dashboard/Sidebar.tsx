@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 // Thread type can be imported from context or other shared location if needed, but Sidebar directly uses context values
 import { useDashboard } from '@/contexts/DashboardContext'; // Import the hook
