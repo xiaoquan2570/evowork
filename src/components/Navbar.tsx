@@ -68,7 +68,7 @@ const Navbar = () => {
     e.preventDefault();
     if (pathname === '/') { // Only scroll if on homepage
       const element = document.getElementById(sectionId);
-      if (element) {
+    if (element) {
         const yOffset = -70; // Adjusted offset for potentially slimmer navbar
         const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
         window.scrollTo({ top: y, behavior: 'smooth' });
@@ -76,7 +76,7 @@ const Navbar = () => {
       } else if (sectionId === 'hero-section') {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         setActiveSection(sectionId);
-      }
+    }
     } else {
       // If not on homepage, navigate to homepage and then try to scroll (might need more robust solution)
       window.location.href = `/${sectionId === 'hero-section' ? '' : '#' + sectionId}`;
@@ -103,7 +103,7 @@ const Navbar = () => {
         {/* Centered Navigation Links - Adjusted for absolute centering */}
         <div className="hidden md:flex items-center space-x-1 absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
           <LayoutGroup>
-            {navLinks.map((link) => {
+          {navLinks.map((link) => {
               const isActive = isHomepage ? activeSection === link.id : pathname === link.href && !link.href.includes('#');
               
               const linkTextClasses = `relative z-10 py-1.5 px-3.5 text-sm font-medium transition-colors duration-150 ease-in-out 
@@ -119,10 +119,10 @@ const Navbar = () => {
                 className: `nav-link-item flex items-center justify-center cursor-pointer focus:outline-none rounded-md ${linkTextClasses}`,
               };
 
-              return (
+            return (
                 // Pass key directly to the <a> tag
                 <a key={keyForLink} {...commonLinkProps} onClick={isHomepage ? (e) => handleNavClick(e, link.id) : undefined}>
-                  {link.label}
+                {link.label}
                   {isActive && (
                     <motion.span
                       layoutId="activeNavBackground"
@@ -133,8 +133,8 @@ const Navbar = () => {
                     />
                   )}
                 </a>
-              );
-            })}
+            );
+          })}
           </LayoutGroup>
         </div>
 

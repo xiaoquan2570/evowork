@@ -69,13 +69,13 @@ export default function HomePage() {
             <span className="text-blue-600 dark:text-blue-400">Evo</span>Work
           </h1>
           <p className="text-lg md:text-xl text-slate-600 dark:text-slate-400 mb-10 md:mb-12 max-w-xl mx-auto">
-            AI驱动未来工作：雇佣AI数字员工，部署智能工作流，全面提升企业效率。
-          </p>
-          
+          AI驱动未来工作：雇佣AI数字员工，部署智能工作流，全面提升企业效率。
+        </p>
+        
           {/* ChatInput - Assuming ChatInput is still relevant. Styling might need to be adjusted within ChatInput component itself */}
           <div className="mb-12 md:mb-16"> {/* Increased margin-bottom for spacing */}
             <ChatInput role={role} /> {/* Passing role if still needed, or ChatInput needs to be self-contained */}
-          </div>
+        </div>
 
           {/* Video Player Area - Styled to be more card-like */}
           <div className="max-w-2xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-700">
@@ -84,13 +84,13 @@ export default function HomePage() {
               <p className="text-sm font-medium text-slate-700 dark:text-slate-300">EvoWork 视频演示</p>
             </div> */} 
             <div className="relative" style={{paddingTop: '56.25%'}}> {/* 16:9 Aspect Ratio */}
-              <iframe
-                src="//player.bilibili.com/player.html?isOutside=true&aid=436966391&bvid=BV1cj411K7SZ&cid=1008533430&p=1"
-                scrolling="no"
-                frameBorder="0"
-                allowFullScreen={true}
-                className="absolute top-0 left-0 w-full h-full"
-              ></iframe>
+            <iframe
+              src="//player.bilibili.com/player.html?isOutside=true&aid=436966391&bvid=BV1cj411K7SZ&cid=1008533430&p=1"
+              scrolling="no"
+              frameBorder="0"
+              allowFullScreen={true}
+              className="absolute top-0 left-0 w-full h-full"
+            ></iframe>
             </div>
           </div>
         </div>
@@ -183,7 +183,7 @@ export default function HomePage() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-2xl font-semibold text-slate-900 dark:text-white">免费版</h3>
                 <span className="text-xs bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold px-3 py-1 rounded-full">当前</span>
-              </div>
+            </div>
               <p className="text-5xl font-bold text-slate-900 dark:text-white mb-1">$0</p>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">入门版包含：</p>
               <span className="text-xs self-start font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1 rounded-full mb-6">60分钟/月</span>
